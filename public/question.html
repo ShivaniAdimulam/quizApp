@@ -14,6 +14,7 @@
         <!-- User's answer and result will be displayed here -->
     </div>
     <div id="timer">Time Left: 10 seconds</div>
+    <button id="closeButton" style="display: none;">Close</button>
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
@@ -24,6 +25,7 @@
         // Event handler for receiving the next question
         socket.on('next-question', (question) => {
             startTimer(10)
+            console.log(question,"plese come")
             questionContainer.innerHTML = `<p>${question.question}</p>`;
             const options = question.options.map((option, index) =>
                 `<button onclick="submitAnswer('${option}')">${option}</button>`
@@ -54,14 +56,57 @@ function startTimer(seconds) {
 
         // Event handler for receiving the answer result
         socket.on('answer-result', ({ isCorrect }) => {
-            answerContainer.innerHTML = isCorrect ? '<p>Correct!</p>' : '<p>Incorrect!</p>';
+            answerContainer.innerHTML = isCorrect ? '<p>Last answer was Correct!</p>' : '<p>Last answer was Incorrect!</p>';
         });
 
         // Event handler for receiving the final score
         socket.on('final-score', ({ finalScore }) => {
             questionContainer.innerHTML = '<h2>Quiz Ended</h2>';
             answerContainer.innerHTML = `<p>Your final score: ${finalScore} out of 5</p>`;
+
+            // Show the "Close" button
+    const closeButton = document.getElementById('closeButton');
+    closeButton.style.display = 'block';
+
+    // Event handler for clicking the "Close" button
+    closeButton.addEventListener('click', async () => {
+        try {
+        // Send an HTTP request to the server to close and delete the room
+        const response = await fetch('api/deleteCloseRoom', {
+            method: 'PUT', // You can use PUT or POST depending on your server setup
         });
+
+        if (response.ok) {
+            // Room was closed successfully
+            window.location.href = 'endquiz.html'; // Redirect to the thank you page
+        } else {
+            console.error('Failed to close the room:', response.status);
+        }
+    } catch (error) {
+        console.error('Error closing the room:', error);
+    }
+    });
+    
+        });
+
+        // Fetch questions when the page loads
+window.addEventListener('load', async () => {
+    try {
+        const response = await fetch('/api/getQuestions'); // Replace with your API endpoint
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        const data = await response.json();
+        questions = data; // Update the questions array
+        console.log(questions,"yess")
+        currentQuestionIndex = 0; // Reset the question index
+        // Start the quiz with the first question
+        socket.emit('next-question', questions[currentQuestionIndex]);
+    } catch (error) {
+        console.error('Error fetching questions:', error);
+    }
+});
+
     </script>
 </body>
 </html>

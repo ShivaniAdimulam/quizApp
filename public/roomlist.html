@@ -10,7 +10,7 @@
     <ul id="roomList">
         <!-- Room names with Join buttons will be dynamically added here -->
     </ul>
-
+    <button id="createRoomButton">Create Room</button>
     <!-- Include Socket.io library -->
     <script src="/socket.io/socket.io.js"></script>
 
@@ -74,6 +74,32 @@
 
         // Call the function to render room names when the page loads
         window.addEventListener('load', renderRoomNames);
+
+         // Function to create a room via a POST request
+    async function createRoom() {
+        try {
+            const response = await fetch('/api/createRoom', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ userId: 'yourUserId' }) // Replace 'yourUserId' with the actual user ID
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+
+            // Reload the page to update the room list
+            window.location.reload();
+        } catch (error) {
+            console.error('Error creating room:', error);
+        }
+    }
+
+    // Add a click event listener to the "Create Room" button
+    const createRoomButton = document.getElementById('createRoomButton');
+    createRoomButton.addEventListener('click', createRoom);
     </script>
 </body>
 </html>
