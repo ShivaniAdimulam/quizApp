@@ -24,6 +24,7 @@ const Question = mongoose.model('Question',{
     answer:String
     // Add more room-related fields as needed
   } );
+  const User = mongoose.model('User',{name:String,score:Number})
 app.use(express.static(__dirname + '/public'));
 
 app.get('/api/getRoomlist', (req, res) => {
@@ -41,18 +42,31 @@ server.listen(3000, () => {
 
 
 
-async function getAvailableRoom(res) {
+async function getAvailableRoom(req,res) {
     try {
         
-      const availableRooms = await Room.find({}).populate('users', 'username');
-      const room = availableRooms.find((room) => room.users.length < 2);
-        console.log(room)
-      if (room) {
-        return room
-       // res.render('roomlist', { room });
-      }
+      const availableRooms = await Room.find()              //.populate('users', 'username');
+      console.log(availableRooms)
+      //  let room = availableRooms.find((room) => room.users.length < 2);
+      //  if(room.length=0){
+      //   res.status(200).json({message:"No rooms available"})
+      //  }
+      res.status(200).json(availableRooms)
+      // let room = availableRooms.find((room) => room.users.length < 2);
+      //   console.log(room)
+      // if (room) {
+      //   //return room
+      //   res.status(200).json(room)
+      //  // res.render('roomlist', { room });
+      // }{
+      //   room=[]
+      //   console.log(room)
+      //   res.status(200).json({room:room})
+      //   //return room
+      // }
       
-      return room
+      
+      //res.status(200).json(room)
       //res.render('roomlist', { room });
       // If no available rooms were found, create a new room
       //return createRoom();
@@ -62,19 +76,55 @@ async function getAvailableRoom(res) {
     }
   }
   app.get("/api/getRoomslist",getAvailableRoom)
+  const questions = [
+    {
+        question: 'What is the capital of France?',
+        options: ['Berlin', 'Madrid', 'Paris', 'Rome'],
+        correctAnswer: 'Paris',
+    },
+    {
+        question: 'Which planet is known as the Red Planet?',
+        options: ['Earth', 'Mars', 'Venus', 'Jupiter'],
+        correctAnswer: 'Mars',
+    },
+    {
+        question: 'How many continents are there on Earth?',
+        options: ['3', '5', '6', '7'],
+        correctAnswer: '7',
+    },
+    {
+        question: 'What is the largest mammal?',
+        options: ['Elephant', 'Giraffe', 'Blue Whale', 'Kangaroo'],
+        correctAnswer: 'Blue Whale',
+    },
+    {
+        question: 'What is the chemical symbol for gold?',
+        options: ['Go', 'Au', 'Ag', 'Ge'],
+        correctAnswer: 'Au',
+    },
+];
 
+let currentQuestionIndex = 0;
   
   io.on('connection', (socket) => {
     socket.on('join-room', async (roomName) => {
       try {
         //const room = await createRoom(socket.id);
         const room = await Room.findOne({ name: roomName });
+        const user = await User.create({name:""})
         if (room) {
-            room.users.push(userId);
+          let userId
+          if(room.users.length==0){
+            userId=0
+          }else{
+            userId=1
+          }
+            room.users.push(userId);    user._id
             await room.save();
         }
         socket.join(room.name);
         socket.roomName = room.name;
+        socket.userid= user._id
         socket.userIndex = room.users.indexOf(socket.id); // 0 or 1
   
         // Notify the user about the room they joined
@@ -89,6 +139,7 @@ async function getAvailableRoom(res) {
     
     
     const userScores = new Map();
+    const userscore= 0
     socket.on('user-answer', async ({ questionId, userAnswer }) => {
        // const correctAnswer = randomQuestions[questionIndex].correctAnswer;
        let answer = await Question.findOne({_id:questionId})
@@ -99,11 +150,13 @@ async function getAvailableRoom(res) {
           userScores.set(socket.id, 0);
         }
         if (isCorrect) {
+          userscore+=10
+          let update =await User.findOneAndUpdate({_id:socket.userid},{score:userscore})
           userScores.set(socket.id, userScores.get(socket.id) + 10); // Assuming 10 points for a correct answer
         }
       
         // Emit the updated user scores to users
-        io.to(roomName).emit('user-score', Array.from(userScores));
+        io.to(roomName).emit('user-score', Array.from(userscore)); //userScores
       });
 
     // socket.on('user-answer', async (userAnswer) => {
@@ -125,6 +178,38 @@ async function getAvailableRoom(res) {
     //       }
     //     }
     //   })
+
+
+     // Event handler for when a user submits an answer
+     socket.on('submit-answer', async (userAnswer) => {
+      const currentQuestion = questions[currentQuestionIndex];
+
+      // Check if the user's answer is correct
+      const isCorrect = userAnswer === currentQuestion.correctAnswer;
+
+      // Emit the result of the user's answer
+      io.emit('answer-result', { isCorrect });
+
+      // Move to the next question
+      currentQuestionIndex++;
+
+      // If all questions have been asked, calculate and send the final score
+      if (currentQuestionIndex === questions.length) {
+          const finalScore = 50
+          io.emit('final-score', { finalScore });
+      } else {
+          // Otherwise, send the next question
+          io.emit('next-question', questions[currentQuestionIndex]);
+      }
+  });
+
+  // Event handler for when a user disconnects
+  socket.on('disconnect', () => {
+      console.log('A user disconnected');
+  });
+
+  // Start the quiz by sending the first question
+  socket.emit('next-question', questions[currentQuestionIndex]);
 
 
   });

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz</title>
+</head>
+<body>
+    <h1>Quiz Game</h1>
+    <div id="question-container">
+        <!-- Question and options will be displayed here -->
+    </div>
+    <div id="answer-container">
+        <!-- User's answer and result will be displayed here -->
+    </div>
+    <div id="timer">Time Left: 10 seconds</div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+
+        const questionContainer = document.getElementById('question-container');
+        const answerContainer = document.getElementById('answer-container');
+
+        // Event handler for receiving the next question
+        socket.on('next-question', (question) => {
+            startTimer(10)
+            questionContainer.innerHTML = `<p>${question.question}</p>`;
+            const options = question.options.map((option, index) =>
+                `<button onclick="submitAnswer('${option}')">${option}</button>`
+            );
+            questionContainer.innerHTML += options.join('');
+        });
+        
+        // Function to start the timer
+function startTimer(seconds) {
+  let timeLeft = seconds;
+  const timerElement = document.getElementById('timer');
+
+  const timerInterval = setInterval(() => {
+    if (timeLeft <= 0) {
+      clearInterval(timerInterval);
+      // Handle timer completion, e.g., show the next question or handle user timeout
+    } else {
+      timerElement.textContent = `Time Left: ${timeLeft} seconds`;
+      timeLeft--;
+    }
+  }, 1000);
+}
+
+        // Event handler for submitting an answer
+        function submitAnswer(userAnswer) {
+            socket.emit('submit-answer', userAnswer);
+        }
+
+        // Event handler for receiving the answer result
+        socket.on('answer-result', ({ isCorrect }) => {
+            answerContainer.innerHTML = isCorrect ? '<p>Correct!</p>' : '<p>Incorrect!</p>';
+        });
+
+        // Event handler for receiving the final score
+        socket.on('final-score', ({ finalScore }) => {
+            questionContainer.innerHTML = '<h2>Quiz Ended</h2>';
+            answerContainer.innerHTML = `<p>Your final score: ${finalScore} out of 5</p>`;
+        });
+    </script>
+</body>
+</html>

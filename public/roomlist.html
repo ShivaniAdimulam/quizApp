@@ -3,72 +3,77 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Available Rooms</title>
+    <title>Room List</title>
 </head>
 <body>
     <h1>Available Rooms</h1>
-    <ul id="room-list">
-        <!-- Rooms will be dynamically added here -->
+    <ul id="roomList">
+        <!-- Room names with Join buttons will be dynamically added here -->
     </ul>
-    <button id="create-room-button">Create Room</button>
+
+    <!-- Include Socket.io library -->
+    <script src="/socket.io/socket.io.js"></script>
 
     <script>
-        // Function to fetch and display available rooms
-        async function fetchAvailableRooms() {
+        // Function to fetch room names from the API
+        async function fetchRoomNames() {
             try {
-                const response = await fetch('/api/getRoomslist');
+                const response = await fetch('/api/getRoomslist'); // Replace with your API endpoint
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
                 const data = await response.json();
-                const roomList = document.getElementById('room-list');
-                roomList.innerHTML = ''; // Clear existing list
+                return data;
+            } catch (error) {
+                console.error('Error fetching room names:', error);
+                return [];
+            }
+        }
 
-                // Iterate through the list of available rooms and create list items with Join buttons
-                data.rooms.forEach(room => {
-                    const listItem = document.createElement('li');
-                    listItem.textContent = room.name;
-                    const joinButton = document.createElement('button');
-                    joinButton.textContent = 'Join';
-                    joinButton.addEventListener('click', () => joinRoom(room.name)); // Call joinRoom function on click
-                    listItem.appendChild(joinButton);
-                    roomList.appendChild(listItem);
+        // Function to join a room via Socket.io and navigate to the question page
+        function joinRoomAndNavigate(roomName) {
+            // Emit the 'join-room' event to the server
+            socket.emit('join-room', roomName);
+
+            // You can add any additional logic here as needed
+
+            // Navigate to the question.html page
+            window.location.href = 'question.html'; // Replace with the actual URL of your question.html page
+        }
+
+        // Function to render room names and Join buttons in the HTML
+        async function renderRoomNames() {
+            const roomList = document.getElementById('roomList');
+            const roomNames = await fetchRoomNames();
+
+            // Clear existing list items
+            roomList.innerHTML = '';
+
+            // Add room names and Join buttons to the list
+            roomNames.forEach(room => {
+                const listItem = document.createElement('li');
+                listItem.textContent = room.name;
+
+                // Create a "Join" button
+                const joinButton = document.createElement('button');
+                joinButton.textContent = 'Join';
+                joinButton.addEventListener('click', () => {
+                    joinRoomAndNavigate(room.name); // Call the joinRoomAndNavigate function when the button is clicked
                 });
-            } catch (error) {
-                console.error('Error fetching available rooms:', error);
-            }
+
+                // Append the button to the list item
+                listItem.appendChild(joinButton);
+
+                // Append the list item to the roomList
+                roomList.appendChild(listItem);
+            });
         }
 
-        // Function to join a room
-        async function joinRoom(roomName) {
-            try {
-                // Use the join-room socket event here to join the room
-                // You may also redirect the user to the room's page if needed
-                // Example: window.location.href = `/room/${roomName}`;
-                // Use the roomName to identify and join the room via sockets
-                socket.emit('join-room', roomName);
-            } catch (error) {
-                console.error('Error joining room:', error);
-            }
-        }
+        // Initialize Socket.io connection
+        const socket = io();
 
-        // Function to create a new room
-        async function createNewRoom() {
-            try {
-                // Make an API request to create a new room
-                const response = await fetch('/api/createRoom', { method: 'POST' });
-                const data = await response.json();
-                console.log('New room created:', data.roomName);
-                // Optionally, you can redirect the user to the newly created room's page
-                // Example: window.location.href = `/room/${data.roomName}`;
-            } catch (error) {
-                console.error('Error creating a new room:', error);
-            }
-        }
-
-        // Attach an event listener to the "Create Room" button
-        const createRoomButton = document.getElementById('create-room-button');
-        createRoomButton.addEventListener('click', createNewRoom);
-
-        // Fetch and display available rooms when the page loads
-        fetchAvailableRooms();
+        // Call the function to render room names when the page loads
+        window.addEventListener('load', renderRoomNames);
     </script>
 </body>
 </html>
