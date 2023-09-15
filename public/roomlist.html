@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Available Rooms</title>
+</head>
+<body>
+    <h1>Available Rooms</h1>
+    <ul id="room-list">
+        <!-- Rooms will be dynamically added here -->
+    </ul>
+    <button id="create-room-button">Create Room</button>
+
+    <script>
+        // Function to fetch and display available rooms
+        async function fetchAvailableRooms() {
+            try {
+                const response = await fetch('/api/getRoomslist');
+                const data = await response.json();
+                const roomList = document.getElementById('room-list');
+                roomList.innerHTML = ''; // Clear existing list
+
+                // Iterate through the list of available rooms and create list items with Join buttons
+                data.rooms.forEach(room => {
+                    const listItem = document.createElement('li');
+                    listItem.textContent = room.name;
+                    const joinButton = document.createElement('button');
+                    joinButton.textContent = 'Join';
+                    joinButton.addEventListener('click', () => joinRoom(room.name)); // Call joinRoom function on click
+                    listItem.appendChild(joinButton);
+                    roomList.appendChild(listItem);
+                });
+            } catch (error) {
+                console.error('Error fetching available rooms:', error);
+            }
+        }
+
+        // Function to join a room
+        async function joinRoom(roomName) {
+            try {
+                // Use the join-room socket event here to join the room
+                // You may also redirect the user to the room's page if needed
+                // Example: window.location.href = `/room/${roomName}`;
+                // Use the roomName to identify and join the room via sockets
+                socket.emit('join-room', roomName);
+            } catch (error) {
+                console.error('Error joining room:', error);
+            }
+        }
+
+        // Function to create a new room
+        async function createNewRoom() {
+            try {
+                // Make an API request to create a new room
+                const response = await fetch('/api/createRoom', { method: 'POST' });
+                const data = await response.json();
+                console.log('New room created:', data.roomName);
+                // Optionally, you can redirect the user to the newly created room's page
+                // Example: window.location.href = `/room/${data.roomName}`;
+            } catch (error) {
+                console.error('Error creating a new room:', error);
+            }
+        }
+
+        // Attach an event listener to the "Create Room" button
+        const createRoomButton = document.getElementById('create-room-button');
+        createRoomButton.addEventListener('click', createNewRoom);
+
+        // Fetch and display available rooms when the page loads
+        fetchAvailableRooms();
+    </script>
+</body>
+</html>
